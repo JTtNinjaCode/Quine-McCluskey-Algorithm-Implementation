@@ -6,8 +6,9 @@ int main(int argc, char **argv){
     TermsInfo termsInfo;
     std::ifstream ifs(argv[1]);
     ifs >> termsInfo;
+
     QM(termsInfo);
-    // add new term
+
     std::ofstream ofs("out.txt");
     ofs << termsInfo;
 }
