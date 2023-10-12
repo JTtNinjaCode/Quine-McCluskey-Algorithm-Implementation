@@ -9,6 +9,9 @@ int main(int argc, char **argv){
 
     QM(termsInfo);
 
-    std::ofstream ofs("out.txt");
+    std::cout << "Total number of terms: " << termsInfo.termsCount << std::endl;
+    std::cout << "Total number of literals: " << 8;
+
+    std::ofstream ofs(argv[2]);
     ofs << termsInfo;
 }

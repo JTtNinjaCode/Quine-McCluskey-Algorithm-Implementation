@@ -11,7 +11,7 @@ struct TermsInfo {
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
     std::vector<std::string> terms;
-    std::vector<std::string> dontCares;
+    std::vector<std::string> dontCareTerms;
 };
 
 std::istream& operator>>(std::istream& in, TermsInfo& termsInfo);

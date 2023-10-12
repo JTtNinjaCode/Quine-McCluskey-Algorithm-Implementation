@@ -37,7 +37,7 @@ std::istream& operator>>(std::istream& in, TermsInfo& termsInfo) {
             for (size_t i = 0; i < termsInfo.termsCount; i++) {
                 std::string value[2];
                 in >> value[0] >> value[1];
-                writeResult(termsInfo.terms, termsInfo.dontCares, value[0], value[1], 0);
+                writeResult(termsInfo.terms, termsInfo.dontCareTerms, value[0], value[1], 0);
             }
         } else if (token == ".e"){ // exit
             return in;
@@ -50,7 +50,7 @@ std::istream& operator>>(std::istream& in, TermsInfo& termsInfo) {
             while (value[0] != ".e") {
                 counter++;
                 in >> value[1];
-                writeResult(termsInfo.terms, termsInfo.dontCares, value[0], value[1], 0);
+                writeResult(termsInfo.terms, termsInfo.dontCareTerms, value[0], value[1], 0);
                 if (!(in >> value[0]))
                     break;
             }
