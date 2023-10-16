@@ -3,14 +3,21 @@
 
 #include "QM.h"
 
+// used for find PI
 static std::vector<std::unordered_set<std::string>> PITable;
 static std::vector<std::unordered_set<std::string>> tempPITable;
 static std::vector<std::unordered_set<std::string>> removePITable;
-static std::unordered_set<std::string> essentialTerms;
+
+// used for find EPI
 static std::unordered_set<std::string> PISet;
 static std::unordered_set<std::string> EPISet;
-static std::vector<std::string> resultTerms;
+static std::unordered_set<std::string> essentialTerms;
 
+static std::vector<std::string> termTable;
+static std::vector<std::string> resultTerms;
+static unsigned int literalCount = 0;
+
+static unsigned int countLiterals(const std::string &termPresent);
 static unsigned int countSetBits(unsigned int n);
 static unsigned int countOne(const std::string &term);
 static std::pair<bool, std::string> merge(const std::string &str1, const std::string &str2);
@@ -21,6 +28,16 @@ static void Polynomial();
 static void updateTermsInfo(TermsInfo &termsInfo);
 static void initQM(const TermsInfo &termsInfo);
 static void clearQM();
+
+static unsigned int countLiterals(const std::string &termPresent) {
+    unsigned int result = 0;
+    for (char c : termPresent)
+    {
+        if (c != '-')
+            result++;
+    }
+    return result;
+}
 
 unsigned int countSetBits(unsigned int n) {
     unsigned int bitCount = 0;
@@ -120,59 +137,77 @@ void findEPI() {
 }
 
 void Polynomial() {
-    std::vector<std::string> table;
-    table.reserve(PISet.size());
+    termTable.reserve(PISet.size());
     for (const auto &pi : PISet)
-        table.push_back(pi);
+        termTable.push_back(pi);
 
     std::vector<std::vector<unsigned int>> polyTerms;
     polyTerms.resize(essentialTerms.size());
 
     unsigned int index = 0;
     for (const auto &minterm : essentialTerms) {
-        for (int i = 0; i < table.size(); i++) {
-            if (isTermIncluded(table[i], minterm))
+        for (int i = 0; i < termTable.size(); i++) {
+            if (isTermIncluded(termTable[i], minterm))
                 polyTerms[index].push_back(1 << i);
         }
         index++;
     }
 
-    std::unordered_set<uint64_t> result;
-    result.insert(0);
+    std::vector<uint64_t> result;
+    result.push_back(0);
     for (const auto &polyTerm : polyTerms) {
-        std::unordered_set<uint64_t> temp;
+        std::vector<uint64_t> temp;
         for (const auto &oldLiteral : result) {
             for (const auto &newLiteral : polyTerm)
-                temp.insert(newLiteral | oldLiteral);
+                temp.push_back(newLiteral | oldLiteral);
         }
         result = std::move(temp);
     }
-
     unsigned int minOneCount = UINT32_MAX;
-    std::vector<std::pair<unsigned int, uint64_t>> countRecords;
-    countRecords.reserve(result.size());
-
+    std::vector<std::pair<unsigned int, uint64_t>> countOneRecords;
+    countOneRecords.reserve(result.size());
     for (auto term : result) {
-        const auto& record = std::make_pair(countSetBits(term), term);
-        countRecords.push_back(record);
-        if (record.first < minOneCount)
-            minOneCount = record.first;
+        const auto& oneRecord = std::make_pair(countSetBits(term), term);
+        countOneRecords.push_back(oneRecord);
+        if (oneRecord.first < minOneCount)
+            minOneCount = oneRecord.first;
     }
 
-    index = 0;
-    for (auto term : result) {
-        if (countRecords[index].first == minOneCount) {
-            uint64_t termPresentRecord = countRecords[index].second;
-            unsigned int indexCounter = table.size() - 1;
+    unsigned int minLiteralCount = UINT32_MAX;
+    std::vector<std::pair<unsigned int, uint64_t>> countLiteralRecords;
+    for (int i = 0; i < result.size(); i++)
+    {
+        if (countOneRecords[i].first == minOneCount) {
+            unsigned int literals = 0;
+
+            uint64_t record = countOneRecords[i].second;
+            unsigned int index = 0;
+            while (record) {
+                if (record & 1)
+                    literals += countLiterals(termTable[index]);
+                record >>= 1;
+                index++;
+            }
+
+            if (literals < minLiteralCount) {
+                minLiteralCount = literals;
+                countLiteralRecords.push_back(std::make_pair(literals, countOneRecords[i].second));
+            }
+        }
+    }
+    for (auto &record : countLiteralRecords)
+    {
+        if (record.first == minLiteralCount) {
+            uint64_t termPresentRecord = record.second;
+            unsigned int indexCounter = 0;
             while (termPresentRecord) {
                 if (termPresentRecord & 1)
-                    resultTerms.push_back(table[indexCounter]);
+                    resultTerms.push_back(termTable[indexCounter]);
                 termPresentRecord >>= 1;
-                indexCounter--;
+                indexCounter++;
             }
             break;
         }
-        index++;
     }
 }
 
@@ -181,16 +216,28 @@ void updateTermsInfo(TermsInfo &termsInfo) {
     termsInfo.terms.clear();
     for (auto e : EPISet) {
         counter++;
+        literalCount += countLiterals(e);
         termsInfo.terms.push_back(e);
     }
     for (auto e : resultTerms) {
         counter++;
+        literalCount += countLiterals(e);
         termsInfo.terms.push_back(e);
     }
     termsInfo.termsCount = counter;
 }
 
 void initQM(const TermsInfo &termsInfo) {
+    PITable.clear();
+    tempPITable.clear();
+    removePITable.clear();
+    essentialTerms.clear();
+    PISet.clear();
+    EPISet.clear();
+    resultTerms.clear();
+    termTable.clear();
+    literalCount = 0;
+
     PITable.resize(termsInfo.inputCount + 1);
     tempPITable.resize(termsInfo.inputCount + 1);
     removePITable.resize(termsInfo.inputCount + 1);
@@ -207,40 +254,28 @@ void initQM(const TermsInfo &termsInfo) {
     }
 }
 
-void clearQM() {
-    PITable.clear();
-    tempPITable.clear();
-    removePITable.clear();
-    essentialTerms.clear();
-    PISet.clear();
-    EPISet.clear();
-    resultTerms.clear();
-}
-
-void QM(TermsInfo &termsInfo) {
+unsigned int QM(TermsInfo &termsInfo) {
     initQM(termsInfo);
     findPI();
-
     // convert data structure
-    for (int i = 0; i < PITable.size(); i++) {
-        for (const auto &term : PITable[i]) {
+    for (auto &table: PITable) {
+        for (const auto &term : table)
             PISet.insert(term);
-        }
     }
-
     findEPI();
 
     std::unordered_set<std::string> removeMinterms;
-    for (const auto &i : EPISet) {
-        PISet.erase(i);
-        for (const auto &j : essentialTerms) {
-            if (isTermIncluded(i, j)) removeMinterms.insert(j);
+    for (const auto &epi : EPISet) {
+        PISet.erase(epi);
+        for (const auto &essentialTerm : essentialTerms) {
+            if (isTermIncluded(epi, essentialTerm))
+                removeMinterms.insert(essentialTerm);
         }
     }
-    for (const auto &e : removeMinterms)
-        essentialTerms.erase(e);
+    for (const auto &term : removeMinterms)
+        essentialTerms.erase(term);
 
     Polynomial();
     updateTermsInfo(termsInfo);
-    clearQM();
+    return literalCount;
 }

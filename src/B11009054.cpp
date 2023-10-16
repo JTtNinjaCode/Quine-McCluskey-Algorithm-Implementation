@@ -7,10 +7,9 @@ int main(int argc, char **argv){
     std::ifstream ifs(argv[1]);
     ifs >> termsInfo;
 
-    QM(termsInfo);
-
+    unsigned int literalCount = QM(termsInfo);
     std::cout << "Total number of terms: " << termsInfo.termsCount << std::endl;
-    std::cout << "Total number of literals: " << 8;
+    std::cout << "Total number of literals: " << literalCount << std::endl;
 
     std::ofstream ofs(argv[2]);
     ofs << termsInfo;

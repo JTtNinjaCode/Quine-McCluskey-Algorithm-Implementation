@@ -3,6 +3,6 @@
 
 #include "TermsInfo.h"
 
-void QM(TermsInfo &inputInfo);
+unsigned int QM(TermsInfo &inputInfo);
 
 #endif
